@@ -1,0 +1,13 @@
+checkpoints/
+data/
+outputs/
+__pycache__/
+*.pt
+*.png
+*.jpg
+*.csv
+*.json
+.env
+node_modules/
+venv/
+.venv/

@@ -1,0 +1,35 @@
+seed: 42
+
+data:
+  metadata_path: data/metadata.csv
+  image_size: 224
+  scale_fractions: [1.0, 0.75, 0.55]
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  cancer_mapping:
+    BRCA: 0
+    LUAD: 1
+    GBM: 2
+
+model:
+  pretrained: true
+  hidden_dim: 512
+  fusion_dim: 512
+  dropout: 0.30
+  patch_grid: 4
+  use_scale_attention: true
+  use_patch_attention: true
+  use_mil: true
+  shared_backbone: true
+
+training:
+  epochs: 3
+  batch_size: 16
+  num_workers: 0
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  subtype_loss_weight: 1.0
+
+outputs:
+  root: .
