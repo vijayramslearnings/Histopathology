@@ -1,0 +1,42 @@
+seed: 42
+
+data:
+  metadata_path: data/pilot_cohort.csv
+  image_size: 224
+  scale_fractions: [1.0, 0.75, 0.55]
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  stain_normalization: true
+  cancer_mapping:
+    BRCA: 0
+    LUAD: 1
+    GBM: 2
+
+model:
+  pretrained: true
+  hidden_dim: 512
+  fusion_dim: 512
+  projection_dim: 128
+  dropout: 0.30
+  patch_grid: 4
+  use_scale_attention: true
+  use_patch_attention: true
+  use_mil: true
+  shared_backbone: true
+
+training:
+  epochs: 15
+  batch_size: 16
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  focal_gamma: 2.0
+  label_smoothing: 0.10
+  supcon_weight: 0.10
+  subtype_loss_weight: 1.0
+  scheduler: "cosine_warm_restarts"
+  t_0: 5
+  t_mult: 2
+
+outputs:
+  root: .

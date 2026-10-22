@@ -1,0 +1,35 @@
+# Data Configuration
+projects:
+  - TCGA-BRCA
+  - TCGA-LUAD
+  - TCGA-LUSC
+  - TCGA-KIRC
+  - TCGA-KIRP
+  - TCGA-KICH
+  - TCGA-COAD
+  - TCGA-READ
+  - TCGA-GBM
+  - TCGA-LGG
+
+tasks:
+  cancer_type:
+    classes: [BRCA, LUNG, KIDNEY, COLON, GLIOMA]
+  brca_histology:
+    classes: [IDC, ILC]
+  brca_pam50:
+    classes: [LumA, LumB, HER2, Basal]
+  lung_histology:
+    classes: [LUAD, LUSC]
+  kidney_histology:
+    classes: [KIRC, KIRP, KICH]
+  colon_msi:
+    classes: [MSS, MSI-H]
+  glioma_grade:
+    classes: [LGG, GBM]
+  glioma_idh:
+    classes: [IDH-wt, IDH-mut]
+
+pilot:
+  samples_per_cancer: 20
+  total_slides: 100
+  seed: 42

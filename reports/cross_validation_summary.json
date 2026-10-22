@@ -1,0 +1,44 @@
+{
+  "num_folds": 5,
+  "epochs_per_fold": 12,
+  "total_specimens": 244,
+  "training_time_seconds": 101.7,
+  "mean_accuracy": 0.9918,
+  "std_accuracy": 0.01,
+  "mean_balanced_accuracy": 0.9946,
+  "std_balanced_accuracy": 0.0066,
+  "mean_macro_f1": 0.994,
+  "std_macro_f1": 0.0073,
+  "fold_details": [
+    {
+      "fold": 0,
+      "acc": 1.0,
+      "balanced_acc": 1.0,
+      "macro_f1": 1.0
+    },
+    {
+      "fold": 1,
+      "acc": 1.0,
+      "balanced_acc": 1.0,
+      "macro_f1": 1.0
+    },
+    {
+      "fold": 2,
+      "acc": 0.9795918367346939,
+      "balanced_acc": 0.9857,
+      "macro_f1": 0.9846
+    },
+    {
+      "fold": 3,
+      "acc": 0.9795918367346939,
+      "balanced_acc": 0.9875,
+      "macro_f1": 0.9856
+    },
+    {
+      "fold": 4,
+      "acc": 1.0,
+      "balanced_acc": 1.0,
+      "macro_f1": 1.0
+    }
+  ]
+}

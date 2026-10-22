@@ -1,0 +1,18 @@
+# Patch Extraction and Feature Encoding Configuration
+preprocessing:
+  patch_size_20x: 256
+  mpp_20x: 0.5
+  patch_size_5x: 256
+  tissue_threshold: 0.50
+  patch_cap_nmax: 4000
+  stain_normalization: false
+
+encoders:
+  resnet50:
+    dim: 1024
+    truncate: "layer3_gap"
+  phikon:
+    dim: 768
+    model_id: "owkin/phikon"
+  ctranspath:
+    dim: 768

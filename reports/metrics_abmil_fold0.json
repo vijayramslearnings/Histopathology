@@ -1,0 +1,180 @@
+{
+  "cancer_type": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        4,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "n_samples": 20
+  },
+  "brca_histology": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": NaN,
+    "confusion_matrix": [
+      [
+        3,
+        0
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "n_samples": 3
+  },
+  "brca_pam50": {
+    "balanced_acc": 0.5,
+    "macro_f1": 0.3333333333333333,
+    "roc_auc": NaN,
+    "confusion_matrix": [
+      [
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 2
+  },
+  "lung_histology": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        1,
+        0
+      ],
+      [
+        0,
+        3
+      ]
+    ],
+    "n_samples": 4
+  },
+  "kidney_histology": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "n_samples": 4
+  },
+  "colon_msi": {
+    "balanced_acc": 0.5,
+    "macro_f1": 0.4,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        2,
+        0
+      ],
+      [
+        1,
+        0
+      ]
+    ],
+    "n_samples": 3
+  },
+  "glioma_grade": {
+    "balanced_acc": 0.6666666666666666,
+    "macro_f1": 0.5,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        1
+      ]
+    ],
+    "n_samples": 4
+  },
+  "glioma_idh": {
+    "balanced_acc": 0.5,
+    "macro_f1": 0.25,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "n_samples": 3
+  }
+}

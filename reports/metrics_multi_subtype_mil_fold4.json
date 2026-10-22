@@ -1,0 +1,485 @@
+{
+  "cancer_type": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": 0.9996,
+    "confusion_matrix": [
+      [
+        7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "n_samples": 49
+  },
+  "brca_histology": {
+    "balanced_acc": 0.3333,
+    "macro_f1": 0.3636,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        4,
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 7
+  },
+  "brca_pam50": {
+    "balanced_acc": 0.25,
+    "macro_f1": 0.2,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        1,
+        0
+      ],
+      [
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 7
+  },
+  "lung_histology": {
+    "balanced_acc": 0.875,
+    "macro_f1": 0.873,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        4,
+        0,
+        0
+      ],
+      [
+        1,
+        3,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 8
+  },
+  "kidney_histology": {
+    "balanced_acc": 0.3333,
+    "macro_f1": 0.1667,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        1,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 4
+  },
+  "colon_msi": {
+    "balanced_acc": 0.5,
+    "macro_f1": 0.4857,
+    "roc_auc": 0.625,
+    "confusion_matrix": [
+      [
+        2,
+        2
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "n_samples": 6
+  },
+  "glioma_grade": {
+    "balanced_acc": 0.5,
+    "macro_f1": 0.5,
+    "roc_auc": 0.5,
+    "confusion_matrix": [
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "n_samples": 4
+  },
+  "glioma_idh": {
+    "balanced_acc": 0.5,
+    "macro_f1": 0.5,
+    "roc_auc": 0.25,
+    "confusion_matrix": [
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "n_samples": 4
+  },
+  "prostate_histology": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        4,
+        0
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "n_samples": 4
+  },
+  "prostate_gleason": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 4
+  },
+  "stomach_histology": {
+    "balanced_acc": 0.25,
+    "macro_f1": 0.2,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        0,
+        2,
+        0
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 4
+  },
+  "stomach_molecular": {
+    "balanced_acc": 0.0,
+    "macro_f1": 0.0,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 4
+  },
+  "liver_histology": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        4,
+        0
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "n_samples": 4
+  },
+  "melanoma_histology": {
+    "balanced_acc": 0.25,
+    "macro_f1": 0.2,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 4
+  },
+  "melanoma_genomics": {
+    "balanced_acc": 0.75,
+    "macro_f1": 0.7333,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        1
+      ]
+    ],
+    "n_samples": 4
+  },
+  "pancreas_histology": {
+    "balanced_acc": 1.0,
+    "macro_f1": 1.0,
+    "roc_auc": null,
+    "confusion_matrix": [
+      [
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "n_samples": 4
+  }
+}

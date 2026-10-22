@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Large Datasets & Slide files
+data/
+dataset/
+real_clinical_datasets/
+tcga_clinical_datasets/
+*.svs
+*.tif
+*.tiff
+*.h5
+*.hdf5
+*.tar.gz
+*.zip
+
+# Checkpoints & Weights
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.bin
+
+# Output logs and runs
+outputs/
+*.log
+.pytest_cache/

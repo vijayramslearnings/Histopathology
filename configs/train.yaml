@@ -1,0 +1,20 @@
+# Model Training and Evaluation Configuration
+training:
+  n_folds: 5
+  seed: 42
+  optimizer: AdamW
+  learning_rate: 2.0e-4
+  weight_decay: 1.0e-5
+  scheduler: cosine
+  batch_size: 1
+  grad_accum_steps: 16
+  max_epochs: 100
+  patience: 15
+  dropout: 0.25
+  patch_dropout_min: 0.50
+  patch_dropout_max: 1.00
+
+model:
+  in_dim: 1024
+  hidden_dim: 256
+  shared_attention: false
