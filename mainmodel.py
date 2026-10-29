@@ -200,9 +200,15 @@ def load_pan_cancer_model(checkpoint_path: Optional[str] = None, in_dim: int = 1
             print(f"Loading 5-Fold Cross-Validation Ensemble from {ckpt_dir}...")
             fold_models = []
             for p in fold_ckpts:
-                m = MultiSubtypeMIL(in_dim=in_dim, dim=dim, tasks=PAN_CANCER_TASKS, task_cancer=PAN_CANCER_TASK_CANCER)
                 ckpt = torch.load(p, map_location="cpu", weights_only=False)
                 state = ckpt.get("model_state_dict", ckpt)
+                # Auto-detect dim from checkpoint weights
+                fold_dim = dim
+                if "enc.p20.0.weight" in state:
+                    fold_dim = state["enc.p20.0.weight"].shape[0]
+                elif "dim" in ckpt:
+                    fold_dim = int(ckpt["dim"])
+                m = MultiSubtypeMIL(in_dim=in_dim, dim=fold_dim, tasks=PAN_CANCER_TASKS, task_cancer=PAN_CANCER_TASK_CANCER)
                 m.load_state_dict(state)
                 m.eval()
                 fold_models.append(m)

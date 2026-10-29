@@ -1,14 +1,96 @@
 {
   "num_folds": 5,
-  "epochs_per_fold": 12,
-  "total_specimens": 244,
-  "training_time_seconds": 101.7,
-  "mean_accuracy": 0.9918,
-  "std_accuracy": 0.01,
-  "mean_balanced_accuracy": 0.9946,
-  "std_balanced_accuracy": 0.0066,
-  "mean_macro_f1": 0.994,
-  "std_macro_f1": 0.0073,
+  "epochs_per_fold": 30,
+  "total_specimens": 1000,
+  "training_time_seconds": 850.8,
+  "mean_accuracy": 1.0,
+  "std_accuracy": 0.0,
+  "mean_balanced_accuracy": 1.0,
+  "std_balanced_accuracy": 0.0,
+  "mean_macro_f1": 1.0,
+  "std_macro_f1": 0.0,
+  "task_summary": {
+    "cancer_type": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "brca_histology": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "brca_pam50": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "lung_histology": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "kidney_histology": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "colon_msi": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "glioma_grade": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "glioma_idh": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "prostate_histology": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "prostate_gleason": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "stomach_histology": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "stomach_molecular": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "liver_histology": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "melanoma_histology": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "melanoma_genomics": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "pancreas_histology": {
+      "mean": 100.0,
+      "min": 100.0,
+      "max": 100.0
+    }
+  },
   "fold_details": [
     {
       "fold": 0,
@@ -24,15 +106,15 @@
     },
     {
       "fold": 2,
-      "acc": 0.9795918367346939,
-      "balanced_acc": 0.9857,
-      "macro_f1": 0.9846
+      "acc": 1.0,
+      "balanced_acc": 1.0,
+      "macro_f1": 1.0
     },
     {
       "fold": 3,
-      "acc": 0.9795918367346939,
-      "balanced_acc": 0.9875,
-      "macro_f1": 0.9856
+      "acc": 1.0,
+      "balanced_acc": 1.0,
+      "macro_f1": 1.0
     },
     {
       "fold": 4,

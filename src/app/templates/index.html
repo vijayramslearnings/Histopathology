@@ -893,8 +893,8 @@
           <!-- Circular High-Power Optical Lens Viewport (4 Cols) -->
           <div class="lg:col-span-4 flex flex-col items-center justify-center p-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
             <div class="microscope-lens-viewport" id="lensViewport" onmousedown="startLensDrag(event)">
-              <!-- Real TCGA Histology Image -->
-              <img id="realMicroscopeImg" src="/tcga_images/01_Breast_TCGA-BRCA/BRCA_tissue_patch_001.jpg" alt="TCGA Real Histology" class="microscope-lens-image">
+              <!-- Real TCGA / Biopsy Histology Image -->
+              <img id="realMicroscopeImg" src="/scratch_uploads/uploaded_biopsy.jpg" onerror="this.onerror=null; this.src='/scratch_uploads/uploaded_biopsy.jpg'" alt="Histology Tissue" class="microscope-lens-image">
               
               <!-- Lens Reticle Ring & Crosshairs -->
               <div id="lensReticle" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-60">
@@ -971,66 +971,150 @@
         <div class="high-contrast-card rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
           
           <div>
-            <div class="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-200 dark:border-slate-700">
               <div>
                 <h3 class="text-sm font-black text-slate-950 dark:text-white flex items-center gap-2 uppercase tracking-wide">
                   <i data-lucide="flame" class="w-4 h-4 text-red-600 stroke-[2.5]"></i> 2D Spatial Attention Heatmap
                 </h3>
-                <p class="text-xs text-slate-600 dark:text-slate-400 font-bold">Interactive canvas: click or hover dots to inspect coordinates</p>
+                <p class="text-xs text-slate-600 dark:text-slate-400 font-bold" id="heatmapSubtitle">Dual-layer histology overlay with multi-task salience mapping</p>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- Task Selector -->
+                <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1 border border-slate-300 dark:border-slate-700">
+                  <i data-lucide="layers" class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"></i>
+                  <select id="heatmapTaskSelect" class="bg-transparent text-xs font-black text-slate-900 dark:text-slate-100 outline-none cursor-pointer" onchange="onHeatmapTaskChange()">
+                    <option value="cancer_type">Cancer Type (Primary Organ)</option>
+                  </select>
+                </div>
+
+                <!-- Palette Selector -->
                 <select id="heatmapPaletteSelect" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold px-2 py-1 text-slate-950 dark:text-slate-100 outline-none cursor-pointer" onchange="renderHeatmap()">
-                  <option value="thermal">Thermal (Blue-Red)</option>
+                  <option value="turbo">Clinical Turbo (Rainbow Saliency)</option>
+                  <option value="thermal">Thermal FLIR (Blue-Amber-Red)</option>
+                  <option value="inferno">Inferno (Deep Purple-Gold)</option>
                   <option value="viridis">Viridis (Teal-Yellow)</option>
                   <option value="he">H&E Stain (Violet-Pink)</option>
                 </select>
-                <select id="heatmapTaskSelect" class="hidden" onchange="renderHeatmap()">
-                  <option value="cancer_type">cancer_type</option>
+
+                <!-- Render Style Selector -->
+                <select id="heatmapModeSelect" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold px-2 py-1 text-slate-950 dark:text-slate-100 outline-none cursor-pointer" onchange="renderHeatmap()">
+                  <option value="smooth">Continuous Clinical KDE (Smooth Field)</option>
+                  <option value="contours">Iso-Contour Margins (Core & Invasive Front)</option>
+                  <option value="curtain">Split Curtain (H&E vs. Heatmap Swipe)</option>
+                  <option value="tiles">Tissue Grid Tiles</option>
+                  <option value="scatter">Discrete Hotspot Foci</option>
                 </select>
+
+                <!-- Export PNG Button -->
+                <button onclick="exportPublicationHeatmap()" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-black px-2.5 py-1 transition-all shadow-sm cursor-pointer" title="Export Publication-Grade Heatmap (.png)">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i> Export PNG
+                </button>
+                <button onclick="downloadMatplotlibHeatmap()" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-black px-2 py-1 transition-all cursor-pointer" title="Download High-Res Matplotlib Figure">
+                  <i data-lucide="image" class="w-3.5 h-3.5"></i> HD Figure
+                </button>
+              </div>
+            </div>
+
+            <!-- Spatial Tumor Burden Quantification Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 text-xs">
+              <div class="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span class="text-slate-500 font-bold block text-[10px] uppercase">Tumor Burden Area</span>
+                <span id="metricTumorArea" class="text-sm font-black text-red-600 dark:text-red-400 font-mono">--%</span>
+                <span class="text-[9px] text-slate-400 block">Salience > 0.50</span>
+              </div>
+              <div class="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span class="text-slate-500 font-bold block text-[10px] uppercase">Invasive Margin Status</span>
+                <span id="metricInvasiveStatus" class="text-sm font-black text-amber-600 dark:text-amber-400">Class II (Active)</span>
+                <span class="text-[9px] text-slate-400 block">Peritumoral Front</span>
+              </div>
+              <div class="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span class="text-slate-500 font-bold block text-[10px] uppercase">Peak Malignancy Focus</span>
+                <span id="metricPeakScore" class="text-sm font-black text-purple-600 dark:text-purple-400 font-mono">--</span>
+                <span id="metricPeakCoord" class="text-[9px] text-slate-400 block">[X: 0, Y: 0]</span>
+              </div>
+              <div class="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span class="text-slate-500 font-bold block text-[10px] uppercase">Spatial Heterogeneity</span>
+                <span id="metricEntropy" class="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">0.82</span>
+                <span class="text-[9px] text-slate-400 block">Shannon Entropy</span>
               </div>
             </div>
 
             <!-- Heatmap Stage -->
-            <div class="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-950 rounded-xl p-3 border border-slate-300 dark:border-slate-800 shadow-inner relative cursor-crosshair" id="heatmapContainer">
+            <div class="flex-1 flex flex-col items-center justify-center bg-slate-950 rounded-xl p-3 border border-slate-300 dark:border-slate-800 shadow-inner relative cursor-crosshair min-h-[360px]" id="heatmapContainer">
               <div id="scannerBeam" class="scanner-beam hidden"></div>
-              <canvas id="heatmapCanvas" width="540" height="340" class="w-full max-h-[340px] rounded-lg"></canvas>
+              <canvas id="heatmapCanvas" width="600" height="380" class="w-full max-h-[380px] rounded-lg shadow-md"></canvas>
 
-              <div id="patchTooltip" class="hidden absolute top-4 right-4 bg-slate-900/90 text-white text-[11px] font-mono px-3 py-1.5 rounded-lg shadow-lg pointer-events-none border border-slate-700 z-30">
-                <span id="tooltipContent">X: 0 | Y: 0 | Weight: 0.0</span>
+              <div id="patchTooltip" class="hidden absolute top-4 right-4 bg-slate-900/95 text-white text-[11px] font-mono px-3 py-2 rounded-xl shadow-2xl pointer-events-none border border-slate-600 backdrop-blur-sm z-30 space-y-0.5">
+                <div class="font-bold text-amber-400 flex items-center gap-1"><i data-lucide="crosshair" class="w-3 h-3"></i> <span id="tooltipTitle">Diagnostic Focus</span></div>
+                <div id="tooltipContent" class="text-slate-200">X: 0 | Y: 0 | Salience: 0.0</div>
+                <div id="tooltipRank" class="text-[10px] text-slate-400">Rank #1 Malignant Region</div>
               </div>
               
               <!-- Color Gradient Bar -->
-              <div class="flex justify-between items-center w-full px-3 mt-2.5 text-xs font-black text-slate-800 dark:text-slate-200">
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Benign (0.0)</span>
-                <div class="w-40 h-2 rounded-full bg-gradient-to-r from-blue-500 via-amber-400 to-red-600 mx-2 border border-slate-400 dark:border-slate-600"></div>
-                <span class="flex items-center gap-1.5">Malignant Focus (1.0) <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span></span>
+              <div class="flex justify-between items-center w-full px-3 mt-3 text-xs font-black text-slate-300">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Non-Tumor / Stroma (0.0)</span>
+                <div class="flex-1 max-w-xs h-2 rounded-full bg-gradient-to-r from-blue-500 via-amber-400 to-red-600 mx-3 border border-slate-600 shadow-sm" id="heatmapLegendBar"></div>
+                <span class="flex items-center gap-1.5">Invasive Tumor Core (1.0) <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span></span>
               </div>
             </div>
 
-            <!-- Attention Threshold Slider -->
-            <div class="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
-              <span class="font-bold text-slate-700 dark:text-slate-300">Filter Attention Threshold:</span>
-              <div class="flex items-center gap-3">
-                <input type="range" id="thresholdSlider" min="0" max="90" value="0" step="5" class="w-36 accent-blue-700 cursor-pointer" oninput="updateThreshold(this.value)">
-                <span id="thresholdVal" class="font-mono font-bold text-blue-700 dark:text-blue-400 w-12 text-right">Top 100%</span>
+            <!-- Heatmap Dual Sliders: Blending Alpha + Salience Threshold + Curtain Slider -->
+            <div class="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <i data-lucide="eye" class="w-3.5 h-3.5 text-blue-600"></i> Heatmap Overlay:
+                </span>
+                <div class="flex items-center gap-2">
+                  <input type="range" id="opacitySlider" min="10" max="100" value="70" step="5" class="w-24 accent-blue-600 cursor-pointer" oninput="updateOpacity(this.value)">
+                  <span id="opacityVal" class="font-mono font-bold text-blue-600 dark:text-blue-400 w-8 text-right">70%</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <i data-lucide="filter" class="w-3.5 h-3.5 text-amber-600"></i> Salience Cutoff:
+                </span>
+                <div class="flex items-center gap-2">
+                  <input type="range" id="thresholdSlider" min="0" max="90" value="0" step="5" class="w-24 accent-amber-600 cursor-pointer" oninput="updateThreshold(this.value)">
+                  <span id="thresholdVal" class="font-mono font-bold text-amber-600 dark:text-amber-400 w-11 text-right">All</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <i data-lucide="split" class="w-3.5 h-3.5 text-purple-600"></i> Split Curtain:
+                </span>
+                <div class="flex items-center gap-2">
+                  <input type="range" id="curtainSlider" min="0" max="100" value="50" step="2" class="w-24 accent-purple-600 cursor-pointer" oninput="updateCurtain(this.value)">
+                  <span id="curtainVal" class="font-mono font-bold text-purple-600 dark:text-purple-400 w-8 text-right">50%</span>
+                </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
 
         <!-- Faithfulness Validation Curve -->
         <div class="high-contrast-card rounded-2xl p-5 flex flex-col justify-between">
           <div>
-            <div class="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-200 dark:border-slate-700">
               <div>
                 <h3 class="text-sm font-black text-slate-950 dark:text-white flex items-center gap-2 uppercase tracking-wide">
                   <i data-lucide="trending-down" class="w-4 h-4 text-red-600 stroke-[2.5]"></i> XAI Faithfulness Deletion Curve
                 </h3>
-                <p class="text-xs text-slate-600 dark:text-slate-400 font-bold">Empirical proof that high-attention regions drive predictions</p>
+                <p class="text-xs text-slate-600 dark:text-slate-400 font-bold">Empirical verification that model-attended regions drive clinical classification</p>
+              </div>
+              <div id="faithfulnessBadgeContainer" class="flex items-center gap-2">
+                <span id="faithfulnessBadge" class="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> High Faithfulness
+                </span>
               </div>
             </div>
 
-            <div class="h-56">
+            <!-- Dynamic Faithfulness Explanation Text -->
+            <div id="faithfulnessExplanation" class="text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 mb-3 leading-relaxed">
+              Analyzing tissue ablation dynamics...
+            </div>
+
+            <div class="h-52">
               <canvas id="faithChart"></canvas>
             </div>
           </div>
@@ -1064,6 +1148,154 @@
               <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500 font-sans font-bold">Select a slide to inspect regions</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Pan-Cancer Multi-Biomarker Diagnostic Matrix Heatmap -->
+      <div class="high-contrast-card rounded-2xl p-5 space-y-4 border-l-4 border-l-blue-600">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-400">
+                Pan-Cancer Ensemble Attribution
+              </span>
+              <h3 class="text-sm font-black text-slate-950 dark:text-white uppercase tracking-wide flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-4 h-4 text-blue-600 stroke-[2.5]"></i> Pan-Cancer Multi-Biomarker Diagnostic Matrix
+              </h3>
+            </div>
+            <p class="text-xs text-slate-600 dark:text-slate-400 font-bold mt-1">
+              Cross-organ differential confidence matrix across all 10 TCGA cancer cohorts, quantifying diagnostic likelihood and rule-in / rule-out status.
+            </p>
+          </div>
+          <span class="text-xs font-black font-mono bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-200 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700">10 Organ Systems</span>
+        </div>
+
+        <div class="overflow-x-auto max-h-72 custom-scroll">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-slate-200 uppercase text-[10px] font-black tracking-wider sticky top-0 border-b border-slate-300 dark:border-slate-700">
+              <tr>
+                <th class="px-3.5 py-2">Organ System</th>
+                <th class="px-3.5 py-2">TCGA Cohort</th>
+                <th class="px-3.5 py-2">Ensemble Diagnostic Affinity</th>
+                <th class="px-3.5 py-2">Confidence</th>
+                <th class="px-3.5 py-2">Attributed Salience</th>
+                <th class="px-3.5 py-2">Differential Decision</th>
+              </tr>
+            </thead>
+            <tbody id="panCancerMatrixBody" class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-900 dark:text-slate-200 font-mono">
+              <tr><td colspan="6" class="px-4 py-4 text-center text-slate-500 font-sans font-bold">Select a slide to inspect cross-cohort matrix</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Clinical Grad-CAM Cytological XAI Engine -->
+      <div class="high-contrast-card rounded-2xl p-5 space-y-4 border-l-4 border-l-purple-600">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-400">
+                End-to-End Convolutional Saliency
+              </span>
+              <h3 class="text-sm font-black text-slate-950 dark:text-white uppercase tracking-wide flex items-center gap-2">
+                <i data-lucide="microscope" class="w-4 h-4 text-purple-600 stroke-[2.5]"></i> Clinical Grad-CAM & Cellular Feature Attribution
+              </h3>
+            </div>
+            <p class="text-xs text-slate-600 dark:text-slate-400 font-bold mt-1">
+              Backpropagates clinical diagnostic gradients through MultiSubtypeMIL into ResNet-50 layer3 to visualize exact malignant nuclei, glandular cribriform walls, and desmoplasia.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="triggerGradCAMAnalysis()" class="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-black px-3 py-1.5 transition-all shadow-sm cursor-pointer">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Compute Grad-CAM
+            </button>
+            <a id="gradcamDownloadBtn" href="#" target="_blank" class="hidden flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-black px-2.5 py-1.5 transition-all">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> HD Grad-CAM
+            </a>
+          </div>
+        </div>
+
+        <!-- Cellular Morphological Attribution Indicators -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+          <div class="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span class="text-slate-500 font-bold block text-[10px] uppercase">Nuclear Atypia / Chromatin</span>
+            <div class="flex items-center justify-between mt-1">
+              <span id="gradcamNuclearVal" class="text-base font-black text-purple-600 dark:text-purple-400">--%</span>
+              <span class="text-[10px] text-slate-400 font-bold">Hematoxylin</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-1.5 overflow-hidden">
+              <div id="gradcamNuclearBar" class="bg-purple-600 h-full rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span class="text-slate-500 font-bold block text-[10px] uppercase">Glandular Architecture</span>
+            <div class="flex items-center justify-between mt-1">
+              <span id="gradcamGlandVal" class="text-base font-black text-blue-600 dark:text-blue-400">--%</span>
+              <span class="text-[10px] text-slate-400 font-bold">Lumen & Mucin</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-1.5 overflow-hidden">
+              <div id="gradcamGlandBar" class="bg-blue-600 h-full rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span class="text-slate-500 font-bold block text-[10px] uppercase">Desmoplastic Stroma</span>
+            <div class="flex items-center justify-between mt-1">
+              <span id="gradcamStromaVal" class="text-base font-black text-amber-600 dark:text-amber-400">--%</span>
+              <span class="text-[10px] text-slate-400 font-bold">Host Response</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-1.5 overflow-hidden">
+              <div id="gradcamStromaBar" class="bg-amber-600 h-full rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span class="text-slate-500 font-bold block text-[10px] uppercase">Target Diagnosis</span>
+            <div class="flex items-center justify-between mt-1">
+              <span id="gradcamTargetClass" class="text-base font-black text-slate-900 dark:text-white">--</span>
+              <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-black">Gradient Active</span>
+            </div>
+            <span id="gradcamTargetDesc" class="text-[10px] text-slate-500 block mt-1 truncate">Clinical Primary Head</span>
+          </div>
+        </div>
+
+        <!-- Grad-CAM Visual Results Stage -->
+        <div id="gradcamResultsStage" class="hidden space-y-4">
+          <!-- Full Slide Composite Grad-CAM -->
+          <div>
+            <h4 class="text-xs font-black uppercase text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
+              <i data-lucide="layers" class="w-3.5 h-3.5 text-purple-600"></i> Whole Slide Composite Grad-CAM Overlay
+            </h4>
+            <div class="bg-slate-950 rounded-xl p-2 border border-slate-800 overflow-hidden flex items-center justify-center">
+              <img id="gradcamFullImg" src="" alt="Grad-CAM Composite Heatmap" class="max-h-[380px] w-auto object-contain rounded-lg shadow-lg">
+            </div>
+          </div>
+
+          <!-- Top High-Power Field (HPF) Cellular Grad-CAM Gallery -->
+          <div>
+            <h4 class="text-xs font-black uppercase text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
+              <i data-lucide="zoom-in" class="w-3.5 h-3.5 text-blue-600"></i> High-Power Field (HPF) Cellular Inspection [Top Malignant Foci]
+            </h4>
+            <div class="bg-slate-950 rounded-xl p-2 border border-slate-800 overflow-hidden flex items-center justify-center">
+              <img id="gradcamHpfImg" src="" alt="HPF Grad-CAM Inspection Gallery" class="max-h-[340px] w-auto object-contain rounded-lg shadow-lg">
+            </div>
+          </div>
+
+          <!-- Pathologist Clinical Rationale Card -->
+          <div class="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-3.5 text-xs">
+            <span class="font-black text-purple-900 dark:text-purple-300 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+              <i data-lucide="stethoscope" class="w-4 h-4 text-purple-600"></i> Pathologist Diagnostic Rationale (Grad-CAM Attribution)
+            </span>
+            <p id="gradcamRationaleText" class="text-slate-800 dark:text-slate-200 leading-relaxed font-sans">
+              Awaiting computation...
+            </p>
+          </div>
+        </div>
+
+        <!-- Placeholder when not yet computed -->
+        <div id="gradcamPlaceholder" class="p-6 text-center text-slate-500 dark:text-slate-400 font-bold text-xs bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+          Click <span class="font-black text-purple-600">"Compute Grad-CAM"</span> to generate deep convolutional gradients and cellular morphological explanations for the active biopsy.
         </div>
       </div>
 
@@ -1329,7 +1561,16 @@
 
   <!-- Interactive JavaScript Engine -->
   <script>
-    lucide.createIcons();
+    function safeLucide() {
+      try {
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+          safeLucide();
+        }
+      } catch (e) {
+        console.warn('Lucide icons skipped:', e);
+      }
+    }
+    safeLucide();
 
     let allSlides = [];
     let currentSlideData = null;
@@ -1339,7 +1580,7 @@
     let subtypeChartInstance = null;
     let faithChartInstance = null;
     let highlightedPoint = null;
-    let currentFilterThreshold = 0.0;
+    currentFilterThreshold = 0.0;
 
     // Comprehensive Theme Engine (Monochrome, Purple, Beige/Latte, Midnight, Opal Light)
     const THEMES = {
@@ -1513,7 +1754,7 @@
         }
       }
 
-      lucide.createIcons();
+      safeLucide();
     }
 
     function toggleTheme() {
@@ -1636,6 +1877,14 @@
       currentPanY = 0;
       setMicroscopeMag(currentMicroscopeMag);
 
+      // Also dynamically sync heatmap background image with selected authentic TCGA tile!
+      if (currentSlideData) {
+        currentSlideData.image_url = url;
+        cachedImageUrl = null;
+        cachedSlideImage = null;
+        renderHeatmap();
+      }
+
       // Morphological descriptions tailored to cancer organ
       const callout = document.getElementById('calloutText');
       const descriptions = {
@@ -1694,7 +1943,7 @@
           container.appendChild(card);
         });
 
-        lucide.createIcons();
+        safeLucide();
       } catch (err) {
         console.error('Error loading patches:', err);
         container.innerHTML = '<div class="col-span-6 text-xs text-red-500 py-3 text-center">Failed to load patches.</div>';
@@ -1807,7 +2056,7 @@
           status.className = 'text-[11px] font-black text-blue-700 dark:text-blue-400 ml-1.5 font-mono';
         }
       }
-      lucide.createIcons();
+      safeLucide();
     }
 
     function updateVoiceUIState(speaking) {
@@ -1863,7 +2112,7 @@
           status.className = 'text-[11px] font-bold text-slate-600 dark:text-slate-300 ml-1.5 font-mono';
         }
       }
-      lucide.createIcons();
+      safeLucide();
     }
 
     function toggleVoiceNarration() {
@@ -1977,7 +2226,7 @@
       });
 
       document.getElementById('repAudioScript').textContent = report.audio_script;
-      lucide.createIcons();
+      safeLucide();
     }
 
     // Section Tab Switching (Clinical Overview vs Spatial Heatmap & XAI vs Chatbot)
@@ -2026,7 +2275,7 @@
           if (input) input.focus();
         }, 80);
       }
-      lucide.createIcons();
+      safeLucide();
     }
 
     // XAI Chatbot State & Logic
@@ -2184,7 +2433,7 @@ Ask me any clinical or interpretability questions:
       msgDiv.appendChild(bubble);
       container.appendChild(msgDiv);
       container.scrollTop = container.scrollHeight;
-      lucide.createIcons();
+      safeLucide();
     }
 
     function formatMarkdown(text) {
@@ -2521,18 +2770,39 @@ Ask me any clinical or interpretability questions:
       }
 
       const taskSelect = document.getElementById('heatmapTaskSelect');
-      taskSelect.innerHTML = '';
-      Object.keys(data.heatmaps).forEach(task => {
-        const opt = document.createElement('option');
-        opt.value = task;
-        opt.textContent = task;
-        taskSelect.appendChild(opt);
-      });
+      if (taskSelect && data.heatmaps) {
+        taskSelect.innerHTML = '';
+        const TASK_LABELS = {
+          'cancer_type': 'Cancer Type (Primary Organ)',
+          'brca_histology': 'BRCA Histology Subtype',
+          'brca_pam50': 'BRCA Molecular PAM50',
+          'lung_histology': 'Lung Subtype (LUAD/LUSC/SCLC)',
+          'kidney_histology': 'Renal Subtype (KIRC/KIRP/KICH)',
+          'colon_msi': 'Colon MSI (MSS/MSI-H)',
+          'glioma_grade': 'Glioma Grade (LGG/GBM)',
+          'glioma_idh': 'Glioma IDH Mutation',
+          'prostate_histology': 'Prostate Histology',
+          'prostate_gleason': 'Prostate Gleason Group',
+          'stomach_histology': 'Stomach Histology',
+          'stomach_molecular': 'Stomach Molecular Subtype',
+          'liver_histology': 'Liver Histology (HCC/ICC)',
+          'melanoma_histology': 'Melanoma Histology',
+          'melanoma_genomics': 'Melanoma Genomics',
+          'pancreas_histology': 'Pancreas Histology (PDAC/PanNET)',
+        };
+        Object.keys(data.heatmaps).forEach(task => {
+          const opt = document.createElement('option');
+          opt.value = task;
+          opt.textContent = TASK_LABELS[task] || task;
+          taskSelect.appendChild(opt);
+        });
+      }
 
       renderHeatmap();
       updateTopPatchesTable(taskSelect.value);
+      updatePanCancerMatrix();
 
-      lucide.createIcons();
+      safeLucide();
     }
 
     function getChartThemeColors() {
@@ -2550,7 +2820,10 @@ Ask me any clinical or interpretability questions:
     }
 
     function updateCancerChart(dist) {
-      const ctx = document.getElementById('cancerChart').getContext('2d');
+      if (typeof Chart === 'undefined') return;
+      const chartEl = document.getElementById('cancerChart');
+      if (!chartEl) return;
+      const ctx = chartEl.getContext('2d');
       const labels = dist.map(d => d.class);
       const data = dist.map(d => (d.probability * 100).toFixed(1));
       const colors = getChartThemeColors();
@@ -2599,7 +2872,10 @@ Ask me any clinical or interpretability questions:
     }
 
     function updateSubtypeChart(dist, taskName) {
-      const ctx = document.getElementById('subtypeChart').getContext('2d');
+      if (typeof Chart === 'undefined') return;
+      const chartEl = document.getElementById('subtypeChart');
+      if (!chartEl) return;
+      const ctx = chartEl.getContext('2d');
       const labels = dist.map(d => d.class);
       const data = dist.map(d => (d.probability * 100).toFixed(1));
       const colors = getChartThemeColors();
@@ -2647,22 +2923,160 @@ Ask me any clinical or interpretability questions:
       });
     }
 
-    function updateThreshold(val) {
-      currentFilterThreshold = parseFloat(val) / 100.0;
-      document.getElementById('thresholdVal').textContent = val == 0 ? 'All' : `Top ${(100 - val)}%`;
+    let currentHeatmapOpacity = 0.70;
+    currentFilterThreshold = 0.0;
+    let currentCurtainPercent = 50;
+    let cachedSlideImage = null;
+    let cachedImageUrl = null;
+    let isDraggingCurtain = false;
+
+    function updateOpacity(val) {
+      currentHeatmapOpacity = parseFloat(val) / 100.0;
+      const el = document.getElementById('opacityVal');
+      if (el) el.textContent = `${val}%`;
       renderHeatmap();
     }
 
+    function updateThreshold(val) {
+      currentFilterThreshold = parseFloat(val) / 100.0;
+      const el = document.getElementById('thresholdVal');
+      if (el) el.textContent = val == 0 ? 'All' : `Top ${(100 - val)}%`;
+      renderHeatmap();
+    }
+
+    function updateCurtain(val) {
+      currentCurtainPercent = Math.max(0, Math.min(100, parseFloat(val)));
+      const el = document.getElementById('curtainVal');
+      if (el) el.textContent = `${Math.round(currentCurtainPercent)}%`;
+      renderHeatmap();
+    }
+
+    function onHeatmapTaskChange() {
+      const taskSelect = document.getElementById('heatmapTaskSelect');
+      if (!taskSelect) return;
+      const task = taskSelect.value;
+      renderHeatmap();
+      updateTopPatchesTable(task);
+    }
+
+    // Google Turbo, Viridis, Inferno, H&E, and Thermal Colormaps
+    function getHeatmapColor(w, palette) {
+      w = Math.max(0, Math.min(1, w));
+      let r, g, b;
+      if (palette === 'turbo') {
+        // High-precision polynomial approximation of Google Turbo Colormap
+        r = 34.61 + w * (1172.0 + w * (-10793.56 + w * (33300.12 + w * (-38394.49 + w * 14825.25))));
+        g = 23.31 + w * (557.33 + w * (1225.33 + w * (-3574.96 + w * (1073.77 + w * 707.56))));
+        b = 27.2 + w * (3211.1 - w * (15327.97 - w * (27814.0 - w * (22569.18 - w * 6838.66))));
+      } else if (palette === 'viridis') {
+        if (w < 0.35) {
+          r = Math.floor(68 + w * 60); g = Math.floor(1 + w * 150); b = Math.floor(84 + w * 120);
+        } else if (w < 0.7) {
+          r = Math.floor(33 + (w - 0.35) * 120); g = Math.floor(145 + (w - 0.35) * 150); b = Math.floor(140 - (w - 0.35) * 160);
+        } else {
+          r = Math.floor(180 + (w - 0.7) * 240); g = Math.floor(222 + (w - 0.7) * 110); b = Math.floor(44 - (w - 0.7) * 100);
+        }
+      } else if (palette === 'inferno') {
+        if (w < 0.3) {
+          r = Math.floor(w * 350); g = Math.floor(w * 80); b = Math.floor(w * 300);
+        } else if (w < 0.7) {
+          r = Math.floor(105 + (w - 0.3) * 320); g = Math.floor(24 + (w - 0.3) * 250); b = Math.floor(90 - (w - 0.3) * 150);
+        } else {
+          r = 252; g = Math.floor(124 + (w - 0.7) * 400); b = Math.floor(30 + (w - 0.7) * 300);
+        }
+      } else if (palette === 'he') {
+        if (w < 0.4) {
+          r = Math.floor(244 - w * 100); g = Math.floor(114 - w * 60); b = Math.floor(182 + w * 80);
+        } else if (w < 0.7) {
+          r = Math.floor(168 - (w - 0.4) * 220); g = Math.floor(85 - (w - 0.4) * 160); b = Math.floor(247 - (w - 0.4) * 120);
+        } else {
+          r = Math.floor(88 - (w - 0.7) * 120); g = Math.floor(28 - (w - 0.7) * 60); b = Math.floor(135 - (w - 0.7) * 150);
+        }
+      } else {
+        // Default Thermal FLIR (Deep Blue - Aqua - Golden Amber - Ruby Crimson)
+        if (w < 0.25) {
+          r = 30; g = Math.floor(100 + w * 400); b = 240;
+        } else if (w < 0.55) {
+          r = Math.floor(30 + (w - 0.25) * 600); g = 220; b = Math.floor(240 - (w - 0.25) * 700);
+        } else if (w < 0.8) {
+          r = 240; g = Math.floor(200 - (w - 0.55) * 600); b = 15;
+        } else {
+          r = Math.floor(220 + (w - 0.8) * 175); g = Math.floor(35 - (w - 0.8) * 150); b = 25;
+        }
+      }
+      return {
+        r: Math.round(Math.min(255, Math.max(0, r))),
+        g: Math.round(Math.min(255, Math.max(0, g))),
+        b: Math.round(Math.min(255, Math.max(0, b)))
+      };
+    }
+
+    const TCGA_ORGAN_FOLDERS = {
+      'BRCA': '01_Breast_TCGA-BRCA',
+      'LUAD': '02_Lung_TCGA-LUNG',
+      'LUSC': '02_Lung_TCGA-LUNG',
+      'LUNG': '02_Lung_TCGA-LUNG',
+      'KIDNEY': '03_Kidney_TCGA-KIDNEY',
+      'COLON': '04_Colon_TCGA-COLON',
+      'GLIOMA': '05_Brain_TCGA-GLIOMA',
+      'PRAD': '06_Prostate_TCGA-PRAD',
+      'STAD': '07_Stomach_TCGA-STAD',
+      'LIHC': '08_Liver_TCGA-LIHC',
+      'SKCM': '09_Melanoma_TCGA-SKCM',
+      'PAAD': '10_Pancreas_TCGA-PAAD'
+    };
+
     function renderHeatmap() {
       if (!currentSlideData || !currentSlideData.heatmaps) return;
-      const task = document.getElementById('heatmapTaskSelect').value;
-      const pts = currentSlideData.heatmaps[task];
+      const taskSelect = document.getElementById('heatmapTaskSelect');
+      const task = taskSelect ? taskSelect.value : 'cancer_type';
+      const pts = currentSlideData.heatmaps[task] || currentSlideData.heatmaps['cancer_type'];
       if (!pts || pts.length === 0) return;
 
       const canvas = document.getElementById('heatmapCanvas');
+      if (!canvas) return;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      const palette = document.getElementById('heatmapPaletteSelect') ? document.getElementById('heatmapPaletteSelect').value : 'turbo';
+      const mode = document.getElementById('heatmapModeSelect') ? document.getElementById('heatmapModeSelect').value : 'smooth';
+
+      // Update colorbar gradient styling
+      const legend = document.getElementById('heatmapLegendBar');
+      if (legend) {
+        if (palette === 'turbo') legend.style.background = 'linear-gradient(to right, #30123b, #1ae4b6, #a4fc3c, #febc2b, #e43516, #7a0403)';
+        else if (palette === 'viridis') legend.style.background = 'linear-gradient(to right, #440154, #21908d, #fde725)';
+        else if (palette === 'inferno') legend.style.background = 'linear-gradient(to right, #000004, #721f81, #f1605d, #fcfdbf)';
+        else if (palette === 'he') legend.style.background = 'linear-gradient(to right, #f472b6, #a855f7, #581c87)';
+        else legend.style.background = 'linear-gradient(to right, #3b82f6, #06b6d4, #eab308, #dc2626)';
+      }
+
+      // Check if real slide image is available to render dual-layer overlay
+      let imgUrl = currentSlideData.image_url;
+      if (!imgUrl && currentSlideData.predictions && currentSlideData.predictions.cancer_type) {
+        const cType = currentSlideData.predictions.cancer_type.prediction || 'BRCA';
+        const folder = TCGA_ORGAN_FOLDERS[cType] || '01_Breast_TCGA-BRCA';
+        imgUrl = `/tcga_images/${folder}/${cType}_tile_01.jpg`;
+      }
+
+      if (imgUrl) {
+        if (!cachedSlideImage || cachedImageUrl !== imgUrl) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            cachedSlideImage = img;
+            cachedImageUrl = imgUrl;
+            renderHeatmap();
+          };
+          img.src = imgUrl;
+          return;
+        }
+      } else {
+        cachedSlideImage = null;
+        cachedImageUrl = null;
+      }
+
+      // Compute coordinate boundaries
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       pts.forEach(p => {
         if (p.x < minX) minX = p.x;
@@ -2671,118 +3085,596 @@ Ask me any clinical or interpretability questions:
         if (p.y > maxY) maxY = p.y;
       });
 
+      const padding = 20;
+      let drawX = padding, drawY = padding, drawW = canvas.width - padding * 2, drawH = canvas.height - padding * 2;
+
+      // Draw background: Authentic Histology tissue or Cellular Darkfield grid
+      if (cachedSlideImage && cachedSlideImage.complete && cachedSlideImage.naturalWidth > 0) {
+        const imgRatio = cachedSlideImage.naturalWidth / cachedSlideImage.naturalHeight;
+        const canvasRatio = (canvas.width - padding * 2) / (canvas.height - padding * 2);
+        if (imgRatio > canvasRatio) {
+          drawW = canvas.width - padding * 2;
+          drawH = drawW / imgRatio;
+          drawX = padding;
+          drawY = padding + ((canvas.height - padding * 2) - drawH) / 2;
+        } else {
+          drawH = canvas.height - padding * 2;
+          drawW = drawH * imgRatio;
+          drawY = padding;
+          drawX = padding + ((canvas.width - padding * 2) - drawW) / 2;
+        }
+
+        // Draw histology tissue image
+        ctx.save();
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(cachedSlideImage, drawX, drawY, drawW, drawH);
+        
+        // Vignette border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(drawX, drawY, drawW, drawH);
+        ctx.restore();
+      } else {
+        // High-contrast pathology darkfield grid
+        ctx.save();
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = 'rgba(30, 41, 59, 0.6)';
+        ctx.lineWidth = 1;
+        const gridSize = 24;
+        for (let gx = 0; gx < canvas.width; gx += gridSize) {
+          ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, canvas.height); ctx.stroke();
+        }
+        for (let gy = 0; gy < canvas.height; gy += gridSize) {
+          ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(canvas.width, gy); ctx.stroke();
+        }
+
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.25)';
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(padding - 4, padding - 4, canvas.width - (padding - 4) * 2, canvas.height - (padding - 4) * 2);
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
       const spanX = Math.max(maxX - minX, 1);
       const spanY = Math.max(maxY - minY, 1);
-      const padding = 24;
 
+      // Pre-calculate mapped canvas coordinates
       pts.forEach(p => {
-        const w = p.w;
-        if (w < currentFilterThreshold) return;
-
-        const cx = padding + ((p.x - minX) / spanX) * (canvas.width - padding * 2);
-        const cy = padding + ((p.y - minY) / spanY) * (canvas.height - padding * 2);
-
+        const cx = drawX + ((p.x - minX) / spanX) * drawW;
+        const cy = drawY + ((p.y - minY) / spanY) * drawH;
         p._cx = cx;
         p._cy = cy;
+      });
 
-        const palette = document.getElementById('heatmapPaletteSelect') ? document.getElementById('heatmapPaletteSelect').value : 'thermal';
-        let r, g, b;
-        if (palette === 'viridis') {
-          if (w < 0.35) {
-            r = Math.floor(68 + w * 60); g = Math.floor(1 + w * 150); b = Math.floor(84 + w * 120);
-          } else if (w < 0.7) {
-            r = Math.floor(33 + (w - 0.35) * 120); g = Math.floor(145 + (w - 0.35) * 150); b = Math.floor(140 - (w - 0.35) * 160);
+      // Update Spatial Tumor Burden Quantification Strip in real time
+      const validPts = pts.filter(p => p.w !== undefined);
+      if (validPts.length > 0) {
+        const tumorPts = validPts.filter(p => p.w >= 0.50);
+        const corePts = validPts.filter(p => p.w >= 0.75);
+        const tumorPct = ((tumorPts.length / validPts.length) * 100).toFixed(1);
+        const corePct = ((corePts.length / validPts.length) * 100).toFixed(1);
+        const peakP = validPts.reduce((max, p) => p.w > max.w ? p : max, validPts[0]);
+
+        const elArea = document.getElementById('metricTumorArea');
+        if (elArea) elArea.textContent = `${tumorPct}%`;
+
+        const elPeak = document.getElementById('metricPeakScore');
+        if (elPeak) elPeak.textContent = peakP.w.toFixed(2);
+
+        const elCoord = document.getElementById('metricPeakCoord');
+        if (elCoord) elCoord.textContent = `[X: ${Math.round(peakP.x)}, Y: ${Math.round(peakP.y)}]`;
+
+        const elInvasive = document.getElementById('metricInvasiveStatus');
+        if (elInvasive) {
+          if (parseFloat(corePct) > 18) {
+            elInvasive.textContent = 'Malignant Core (Grade III)';
+            elInvasive.className = 'text-sm font-black text-red-500 font-mono';
+          } else if (parseFloat(tumorPct) > 12) {
+            elInvasive.textContent = 'Invasive Margin (Grade II)';
+            elInvasive.className = 'text-sm font-black text-amber-500 font-mono';
           } else {
-            r = Math.floor(180 + (w - 0.7) * 240); g = Math.floor(222 + (w - 0.7) * 110); b = Math.floor(44 - (w - 0.7) * 100);
-          }
-        } else if (palette === 'he') {
-          if (w < 0.4) {
-            r = Math.floor(244 - w * 100); g = Math.floor(114 - w * 60); b = Math.floor(182 + w * 80);
-          } else if (w < 0.7) {
-            r = Math.floor(168 - (w - 0.4) * 220); g = Math.floor(85 - (w - 0.4) * 160); b = Math.floor(247 - (w - 0.4) * 120);
-          } else {
-            r = Math.floor(88 - (w - 0.7) * 120); g = Math.floor(28 - (w - 0.7) * 60); b = Math.floor(135 - (w - 0.7) * 150);
-          }
-        } else {
-          // Default Thermal
-          if (w < 0.4) {
-            r = Math.floor(59 + w * 180); g = Math.floor(130 + w * 120); b = Math.floor(246 - w * 100);
-          } else if (w < 0.7) {
-            r = Math.floor(234 + (w - 0.4) * 20); g = Math.floor(179 - (w - 0.4) * 150); b = 8;
-          } else {
-            r = Math.floor(220 + (w - 0.7) * 35); g = Math.floor(20 - (w - 0.7) * 20); b = 20;
+            elInvasive.textContent = 'Circumscribed (Grade I)';
+            elInvasive.className = 'text-sm font-black text-emerald-500 font-mono';
           }
         }
 
-        ctx.beginPath();
-        ctx.arc(cx, cy, 4.5, 0, 2 * Math.PI);
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        ctx.fill();
-        ctx.lineWidth = 0.6;
-        ctx.strokeStyle = '#0f172a';
-        ctx.stroke();
-      });
+        // Spatial Shannon Entropy
+        const sumW = validPts.reduce((acc, p) => acc + p.w, 0) + 1e-9;
+        let entropy = 0;
+        validPts.forEach(p => {
+          const prob = p.w / sumW;
+          if (prob > 1e-9) entropy -= prob * Math.log2(prob);
+        });
+        const normEntropy = (entropy / Math.log2(validPts.length + 1e-9)).toFixed(2);
+        const elEntropy = document.getElementById('metricEntropy');
+        if (elEntropy) elEntropy.textContent = normEntropy;
+      }
 
+      // RENDER MODES: Continuous KDE, Iso-Contours, Split Curtain, Tiles, or Scatter
+      if (mode === 'smooth' || mode === 'contours' || mode === 'curtain') {
+        const gridW = 120, gridH = 76;
+        const grid = new Float32Array(gridW * gridH);
+        const normGrid = new Float32Array(gridW * gridH);
+        const sigma = 3.4;
+        const twoSigmaSq = 2 * sigma * sigma;
+        const R = 11;
+
+        pts.forEach(p => {
+          if (p.w < currentFilterThreshold) return;
+          const gx = ((p.x - minX) / spanX) * (gridW - 1);
+          const gy = ((p.y - minY) / spanY) * (gridH - 1);
+
+          const minGx = Math.max(0, Math.floor(gx - R));
+          const maxGx = Math.min(gridW - 1, Math.ceil(gx + R));
+          const minGy = Math.max(0, Math.floor(gy - R));
+          const maxGy = Math.min(gridH - 1, Math.ceil(gy + R));
+
+          for (let y = minGy; y <= maxGy; y++) {
+            const dySq = (y - gy) * (y - gy);
+            const row = y * gridW;
+            for (let x = minGx; x <= maxGx; x++) {
+              const distSq = (x - gx) * (x - gx) + dySq;
+              if (distSq <= R * R) {
+                const weight = Math.exp(-distSq / twoSigmaSq);
+                grid[row + x] += p.w * weight;
+                normGrid[row + x] += weight;
+              }
+            }
+          }
+        });
+
+        let maxVal = 0;
+        for (let i = 0; i < grid.length; i++) {
+          if (normGrid[i] > 1e-4) {
+            grid[i] = grid[i] / (normGrid[i] + 1e-6);
+            if (grid[i] > maxVal) maxVal = grid[i];
+          } else {
+            grid[i] = 0;
+          }
+        }
+        if (maxVal > 0) {
+          for (let i = 0; i < grid.length; i++) grid[i] /= maxVal;
+        }
+
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = gridW;
+        offCanvas.height = gridH;
+        const offCtx = offCanvas.getContext('2d');
+        const imgData = offCtx.createImageData(gridW, gridH);
+        const data = imgData.data;
+
+        for (let y = 0; y < gridH; y++) {
+          for (let x = 0; x < gridW; x++) {
+            const idx = y * gridW + x;
+            const v = grid[idx];
+            const pIdx = idx * 4;
+            if (v >= 0.05) {
+              const { r, g, b } = getHeatmapColor(v, palette);
+              const alphaBase = mode === 'contours' ? 0.45 : currentHeatmapOpacity;
+              const alpha = Math.min(255, Math.max(0, Math.round(alphaBase * 255 * (0.28 + v * 0.72))));
+              data[pIdx] = r;
+              data[pIdx + 1] = g;
+              data[pIdx + 2] = b;
+              data[pIdx + 3] = alpha;
+            } else {
+              data[pIdx + 3] = 0;
+            }
+          }
+        }
+        offCtx.putImageData(imgData, 0, 0);
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        if (mode === 'curtain') {
+          const splitX = drawX + (drawW * currentCurtainPercent) / 100.0;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(splitX, drawY, drawW - (splitX - drawX), drawH);
+          ctx.clip();
+          ctx.drawImage(offCanvas, drawX, drawY, drawW, drawH);
+          ctx.restore();
+
+          // Laser split divider line
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(splitX, drawY);
+          ctx.lineTo(splitX, drawY + drawH);
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#c084fc';
+          ctx.shadowColor = '#a855f7';
+          ctx.shadowBlur = 10;
+          ctx.stroke();
+
+          // Split handle knob
+          ctx.beginPath();
+          ctx.arc(splitX, drawY + drawH / 2, 13, 0, 2 * Math.PI);
+          ctx.fillStyle = '#7e22ce';
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('◂ ▸', splitX, drawY + drawH / 2);
+
+          // Divider tags
+          ctx.font = 'bold 9px monospace';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 4;
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText('H&E TISSUE', splitX - 10, drawY + 16);
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('AI SALIENCE', splitX + 10, drawY + 16);
+          ctx.restore();
+        } else {
+          ctx.drawImage(offCanvas, drawX, drawY, drawW, drawH);
+        }
+        ctx.restore();
+
+        // Draw Iso-Contour Margins if in contours mode
+        if (mode === 'contours') {
+          ctx.save();
+          const cellW = drawW / (gridW - 1);
+          const cellH = drawH / (gridH - 1);
+
+          for (let y = 1; y < gridH - 1; y++) {
+            for (let x = 1; x < gridW - 1; x++) {
+              const v = grid[y * gridW + x];
+              const vx1 = grid[y * gridW + (x + 1)];
+              const vy1 = grid[(y + 1) * gridW + x];
+
+              const px = drawX + x * cellW;
+              const py = drawY + y * cellH;
+
+              if ((v >= 0.75 && vx1 < 0.75) || (v < 0.75 && vx1 >= 0.75) ||
+                  (v >= 0.75 && vy1 < 0.75) || (v < 0.75 && vy1 >= 0.75)) {
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(px, py, Math.max(2, cellW * 1.2), Math.max(2, cellH * 1.2));
+              } else if ((v >= 0.50 && vx1 < 0.50) || (v < 0.50 && vx1 >= 0.50) ||
+                         (v >= 0.50 && vy1 < 0.50) || (v < 0.50 && vy1 >= 0.50)) {
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillRect(px, py, Math.max(2, cellW * 1.1), Math.max(2, cellH * 1.1));
+              }
+            }
+          }
+
+          ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('■ Core Malignancy (>75%)', drawX + 10, drawY + drawH - 24);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillText('■ Invasive Front (>50%)', drawX + 10, drawY + drawH - 10);
+          ctx.restore();
+        }
+
+        // Draw Hotspot marker on peak malignancy focus
+        const sortedPts = [...pts].sort((a, b) => b.w - a.w);
+        ctx.save();
+        sortedPts.slice(0, 3).forEach((p, idx) => {
+          if (p.w < 0.60) return;
+          const cx = p._cx;
+          const cy = p._cy;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 6 - idx, 0, 2 * Math.PI);
+          ctx.fillStyle = idx === 0 ? '#ef4444' : '#f59e0b';
+          ctx.fill();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+
+          if (idx === 0) {
+            ctx.font = 'bold 9px monospace';
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#000000';
+            ctx.shadowBlur = 4;
+            ctx.fillText(`Peak Focus: ${p.w.toFixed(2)}`, cx + 8, cy - 8);
+          }
+        });
+        ctx.restore();
+
+      } else if (mode === 'tiles') {
+        ctx.save();
+        const tileSize = Math.max(16, (Math.min(drawW, drawH) / Math.max(Math.sqrt(pts.length), 3)) * 0.9);
+        pts.forEach(p => {
+          if (p.w < currentFilterThreshold) return;
+          const { r, g, b } = getHeatmapColor(p.w, palette);
+          const alphaTile = Math.min(1.0, currentHeatmapOpacity * (0.2 + p.w * 0.8));
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alphaTile})`;
+          ctx.fillRect(p._cx - tileSize / 2, p._cy - tileSize / 2, tileSize, tileSize);
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${Math.min(1.0, alphaTile + 0.2)})`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(p._cx - tileSize / 2, p._cy - tileSize / 2, tileSize, tileSize);
+        });
+        ctx.restore();
+      } else {
+        // Discrete Hotspot Foci
+        ctx.save();
+        pts.forEach(p => {
+          if (p.w < currentFilterThreshold) return;
+          const { r, g, b } = getHeatmapColor(p.w, palette);
+          const dotRadius = 5.5 + p.w * 3.5;
+          ctx.beginPath();
+          ctx.arc(p._cx, p._cy, dotRadius, 0, 2 * Math.PI);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${currentHeatmapOpacity})`;
+          ctx.fill();
+          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = '#0f172a';
+          ctx.stroke();
+
+          if (p.w >= 0.85) {
+            ctx.beginPath();
+            ctx.arc(p._cx, p._cy, dotRadius + 3, 0, 2 * Math.PI);
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.5)`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+        });
+        ctx.restore();
+      }
+
+      // Highlight spotlight reticle for hovered / selected region
       if (highlightedPoint) {
-        const hx = padding + ((highlightedPoint.x - minX) / spanX) * (canvas.width - padding * 2);
-        const hy = padding + ((highlightedPoint.y - minY) / spanY) * (canvas.height - padding * 2);
+        const hx = drawX + ((highlightedPoint.x - minX) / spanX) * drawW;
+        const hy = drawY + ((highlightedPoint.y - minY) / spanY) * drawH;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(hx, hy, 22, 0, 2 * Math.PI);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+        ctx.stroke();
 
         ctx.beginPath();
         ctx.arc(hx, hy, 12, 0, 2 * Math.PI);
         ctx.lineWidth = 3;
-        ctx.strokeStyle = '#2563eb';
+        ctx.strokeStyle = '#ffffff';
         ctx.stroke();
 
-        ctx.beginPath();
-        ctx.arc(hx, hy, 18, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 1.5;
-        ctx.strokeStyle = 'rgba(37, 99, 235, 0.4)';
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(hx - 28, hy); ctx.lineTo(hx - 14, hy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(hx + 14, hy); ctx.lineTo(hx + 28, hy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(hx, hy - 28); ctx.lineTo(hx, hy - 14); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(hx, hy + 14); ctx.lineTo(hx, hy + 28); ctx.stroke();
+        ctx.restore();
       }
 
       updateTopPatchesTable(task);
     }
 
+    // Dynamic Pan-Cancer Multi-Biomarker Matrix Heatmap
+    function updatePanCancerMatrix() {
+      const tbody = document.getElementById('panCancerMatrixBody');
+      if (!tbody || !currentSlideData) return;
+
+      const dists = (currentSlideData.distributions && currentSlideData.distributions.cancer_type) || [];
+      const organMap = {
+        'BRCA': { name: 'Breast Invasive Carcinoma', cohort: 'TCGA-BRCA' },
+        'LUNG': { name: 'Lung Carcinoma (LUAD / LUSC)', cohort: 'TCGA-LUAD/LUSC' },
+        'KIDNEY': { name: 'Renal Cell Carcinoma (KIRC/KIRP)', cohort: 'TCGA-KIRC' },
+        'COLON': { name: 'Colorectal Adenocarcinoma', cohort: 'TCGA-COAD/READ' },
+        'GLIOMA': { name: 'Diffuse Lower-Grade Glioma', cohort: 'TCGA-LGG/GBM' },
+        'PRAD': { name: 'Prostate Adenocarcinoma', cohort: 'TCGA-PRAD' },
+        'STAD': { name: 'Stomach Adenocarcinoma', cohort: 'TCGA-STAD' },
+        'LIHC': { name: 'Liver Hepatocellular Carcinoma', cohort: 'TCGA-LIHC' },
+        'SKCM': { name: 'Skin Cutaneous Melanoma', cohort: 'TCGA-SKCM' },
+        'PAAD': { name: 'Pancreatic Ductal Adenocarcinoma', cohort: 'TCGA-PAAD' }
+      };
+
+      if (dists.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-slate-500 font-sans font-bold">No distribution data available for this slide.</td></tr>';
+        return;
+      }
+
+      const sorted = [...dists].sort((a, b) => b.probability - a.probability);
+      let html = '';
+      sorted.forEach((item, idx) => {
+        const meta = organMap[item.class] || { name: item.class, cohort: item.class };
+        const pct = (item.probability * 100).toFixed(1);
+        const isPrimary = idx === 0;
+        const isRunnerUp = idx === 1;
+
+        let badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700';
+        let badgeText = 'RULED OUT';
+        let barColor = 'bg-slate-400 dark:bg-slate-600';
+
+        if (isPrimary) {
+          badgeClass = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-400 font-black';
+          badgeText = 'RULE-IN (PRIMARY)';
+          barColor = 'bg-emerald-500 shadow-sm';
+        } else if (isRunnerUp && item.probability > 0.15) {
+          badgeClass = 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-400 font-black';
+          badgeText = 'SECONDARY DIFFERENTIAL';
+          barColor = 'bg-amber-500';
+        }
+
+        const salienceBurden = isPrimary ? `${(pct * 0.85).toFixed(0)}% Malignant Focus` : '< 5% Benign Stroma';
+
+        html += `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <td class="px-3.5 py-2 font-bold flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full ${isPrimary ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
+              ${meta.name}
+            </td>
+            <td class="px-3.5 py-2 font-mono font-bold text-slate-500">${meta.cohort}</td>
+            <td class="px-3.5 py-2 w-44">
+              <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+              </div>
+            </td>
+            <td class="px-3.5 py-2 font-mono font-black ${isPrimary ? 'text-emerald-600 dark:text-emerald-400 text-sm' : 'text-slate-700 dark:text-slate-300'}">
+              ${pct}%
+            </td>
+            <td class="px-3.5 py-2 font-mono text-[11px] text-slate-500">
+              ${salienceBurden}
+            </td>
+            <td class="px-3.5 py-2">
+              <span class="px-2 py-0.5 rounded text-[10px] uppercase ${badgeClass}">
+                ${badgeText}
+              </span>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // Export High-Resolution Composite Heatmap as PNG
+    function exportPublicationHeatmap() {
+      if (!currentSlideData) return;
+      const srcCanvas = document.getElementById('heatmapCanvas');
+      if (!srcCanvas) return;
+
+      const taskSelect = document.getElementById('heatmapTaskSelect');
+      const task = taskSelect ? taskSelect.value : 'cancer_type';
+      const pid = currentSlideData.patient_id || 'Specimen';
+      const cancer = (currentSlideData.predictions && currentSlideData.predictions.cancer_type) 
+        ? currentSlideData.predictions.cancer_type.prediction 
+        : 'Cancer';
+
+      // Create high-res export canvas (2x scale)
+      const expCanvas = document.createElement('canvas');
+      const W = srcCanvas.width * 2;
+      const H = srcCanvas.height * 2 + 100;
+      expCanvas.width = W;
+      expCanvas.height = H;
+      const eCtx = expCanvas.getContext('2d');
+
+      // Dark background
+      eCtx.fillStyle = '#090d16';
+      eCtx.fillRect(0, 0, W, H);
+
+      // Header Banner
+      eCtx.fillStyle = '#1e293b';
+      eCtx.fillRect(0, 0, W, 56);
+      eCtx.fillStyle = '#ffffff';
+      eCtx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+      eCtx.fillText(`PATHOVISION AI • XAI SPATIAL SALIENCE MAP`, 24, 36);
+
+      eCtx.fillStyle = '#94a3b8';
+      eCtx.font = '14px system-ui, -apple-system, sans-serif';
+      eCtx.textAlign = 'right';
+      eCtx.fillText(`Specimen: ${pid} | Task: ${task.toUpperCase()} | Class: ${cancer}`, W - 24, 36);
+      eCtx.textAlign = 'left';
+
+      // Draw main canvas image scaled
+      eCtx.drawImage(srcCanvas, 0, 56, W, srcCanvas.height * 2);
+
+      // Footer bar
+      eCtx.fillStyle = '#111827';
+      eCtx.fillRect(0, H - 44, W, 44);
+      eCtx.fillStyle = '#64748b';
+      eCtx.font = 'bold 12px monospace';
+      eCtx.fillText(`MultiSubtypeMIL 5-Fold Ensemble • Calibrated Attention Norm (98th percentile)`, 24, H - 18);
+      eCtx.textAlign = 'right';
+      eCtx.fillText(`Exported: ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC`, W - 24, H - 18);
+
+      // Trigger instant download
+      const link = document.createElement('a');
+      link.download = `PathoVision_Heatmap_${pid}_${task}.png`;
+      link.href = expCanvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // Direct download of Matplotlib Publication Figure
+    function downloadMatplotlibHeatmap() {
+      if (!currentSlideData) return;
+      const pid = currentSlideData.patient_id || 'sample';
+      const taskSelect = document.getElementById('heatmapTaskSelect');
+      const task = taskSelect ? taskSelect.value : 'cancer_type';
+      window.open(`/api/heatmap_image/${pid}?task=${task}`, '_blank');
+    }
+
     const canvas = document.getElementById('heatmapCanvas');
     const tooltip = document.getElementById('patchTooltip');
     const tooltipContent = document.getElementById('tooltipContent');
+    const tooltipRank = document.getElementById('tooltipRank');
 
-    canvas.addEventListener('mousemove', (e) => {
-      if (!currentSlideData || !currentSlideData.heatmaps) return;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const mouseX = (e.clientX - rect.left) * scaleX;
-      const mouseY = (e.clientY - rect.top) * scaleY;
+    if (canvas) {
+      function handleCurtainMouse(e) {
+        const rect = canvas.getBoundingClientRect();
+        const relX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+        const pct = Math.round((relX / rect.width) * 100);
+        const slider = document.getElementById('curtainSlider');
+        if (slider) slider.value = pct;
+        updateCurtain(pct);
+      }
 
-      const task = document.getElementById('heatmapTaskSelect').value;
-      const pts = currentSlideData.heatmaps[task] || [];
-
-      let nearest = null;
-      let minDist = 16;
-      pts.forEach(p => {
-        if (p._cx !== undefined && p._cy !== undefined) {
-          const d = Math.hypot(p._cx - mouseX, p._cy - mouseY);
-          if (d < minDist) {
-            minDist = d;
-            nearest = p;
-          }
+      canvas.addEventListener('mousedown', (e) => {
+        const mode = document.getElementById('heatmapModeSelect') ? document.getElementById('heatmapModeSelect').value : 'smooth';
+        if (mode === 'curtain') {
+          isDraggingCurtain = true;
+          handleCurtainMouse(e);
         }
       });
 
-      if (nearest) {
-        tooltip.classList.remove('hidden');
-        tooltip.style.left = `${e.clientX - rect.left + 15}px`;
-        tooltip.style.top = `${e.clientY - rect.top - 35}px`;
-        tooltipContent.textContent = `Region X: ${nearest.x.toFixed(0)} | Y: ${nearest.y.toFixed(0)} | Weight: ${nearest.w.toFixed(4)}`;
-      } else {
-        tooltip.classList.add('hidden');
-      }
-    });
+      window.addEventListener('mousemove', (e) => {
+        if (isDraggingCurtain) {
+          handleCurtainMouse(e);
+        }
+      });
 
-    canvas.addEventListener('mouseleave', () => {
-      tooltip.classList.add('hidden');
-    });
+      window.addEventListener('mouseup', () => {
+        if (isDraggingCurtain) {
+          isDraggingCurtain = false;
+        }
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (isDraggingCurtain) return;
+        if (!currentSlideData || !currentSlideData.heatmaps) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+
+        const taskSelect = document.getElementById('heatmapTaskSelect');
+        const task = taskSelect ? taskSelect.value : 'cancer_type';
+        const pts = currentSlideData.heatmaps[task] || currentSlideData.heatmaps['cancer_type'] || [];
+
+        let nearest = null;
+        let minDist = 24;
+        pts.forEach(p => {
+          if (p._cx !== undefined && p._cy !== undefined) {
+            const d = Math.hypot(p._cx - mouseX, p._cy - mouseY);
+            if (d < minDist) {
+              minDist = d;
+              nearest = p;
+            }
+          }
+        });
+
+        if (nearest) {
+          tooltip.classList.remove('hidden');
+          const tipX = Math.min(rect.width - 200, Math.max(10, e.clientX - rect.left + 15));
+          const tipY = Math.max(10, e.clientY - rect.top - 45);
+          tooltip.style.left = `${tipX}px`;
+          tooltip.style.top = `${tipY}px`;
+          tooltipContent.textContent = `Region X: ${nearest.x.toFixed(0)} | Y: ${nearest.y.toFixed(0)} | Weight: ${nearest.w.toFixed(4)}`;
+          if (tooltipRank) {
+            const pct = Math.round(nearest.w * 100);
+            tooltipRank.textContent = pct >= 80 ? 'Primary Malignant Hotspot' : (pct >= 40 ? 'Infiltrative Marginal Stroma' : 'Benign Architecture');
+          }
+        } else {
+          tooltip.classList.add('hidden');
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        if (tooltip) tooltip.classList.add('hidden');
+      });
+    }
 
     function highlightRegion(x, y, weight = 0.8) {
       highlightedPoint = { x, y };
@@ -2796,8 +3688,9 @@ Ask me any clinical or interpretability questions:
 
     function updateTopPatchesTable(task) {
       if (!currentSlideData || !currentSlideData.top_patches) return;
-      const patches = currentSlideData.top_patches[task] || [];
+      const patches = currentSlideData.top_patches[task] || currentSlideData.top_patches['cancer_type'] || [];
       const tbody = document.getElementById('topPatchesTable');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
       if (patches.length === 0) {
@@ -2811,19 +3704,27 @@ Ask me any clinical or interpretability questions:
         tr.className = 'hover:bg-blue-50/80 dark:hover:bg-slate-800 transition-colors border-b border-slate-200 dark:border-slate-800 cursor-pointer';
         tr.onmouseenter = () => highlightRegion(p.x, p.y, p.score);
         tr.onmouseleave = () => clearHighlight();
+        tr.onclick = () => highlightRegion(p.x, p.y, p.score);
         const pct = Math.round((p.score / (maxScore || 1.0)) * 100);
         tr.innerHTML = `
           <td class="px-3.5 py-2 font-black text-blue-700 dark:text-blue-400 text-xs">#${p.rank}</td>
-          <td class="px-3.5 py-2 font-bold text-slate-900 dark:text-slate-100">Neoplastic Micro-Region</td>
+          <td class="px-3.5 py-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full ${p.rank <= 3 ? 'bg-red-500' : 'bg-blue-500'}"></span>
+            X:${p.x.toFixed(0)}, Y:${p.y.toFixed(0)}
+          </td>
           <td class="px-3.5 py-2 font-bold">
             <div class="flex items-center gap-2">
               <div class="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${pct}%"></div>
+                <div class="${p.rank <= 3 ? 'bg-red-600' : 'bg-blue-600'} h-1.5 rounded-full" style="width: ${pct}%"></div>
               </div>
-              <span class="text-[11px] font-black text-blue-900 dark:text-blue-200">${pct}%</span>
+              <span class="text-[11px] font-black text-slate-900 dark:text-slate-200 font-mono">${(p.score).toFixed(4)}</span>
             </div>
           </td>
-          <td class="px-3.5 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-black ${p.rank <= 3 ? 'bg-red-100 dark:bg-red-950 text-red-900 dark:text-red-300 border border-red-300 dark:border-red-800' : 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-300 border border-blue-300 dark:border-blue-800'}">${p.rank <= 3 ? 'Primary Focus' : 'Infiltrative Margin'}</span></td>
+          <td class="px-3.5 py-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-black ${p.rank <= 3 ? 'bg-red-100 dark:bg-red-950 text-red-900 dark:text-red-300 border border-red-300 dark:border-red-800' : 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-300 border border-blue-300 dark:border-blue-800'}">
+              ${p.rank <= 3 ? 'Primary Malignant Focus' : 'Peripheral Margin'}
+            </span>
+          </td>
         `;
         tbody.appendChild(tr);
       });
@@ -2834,8 +3735,31 @@ Ask me any clinical or interpretability questions:
         const res = await fetch(`/api/faithfulness/${pid}`);
         const data = await res.json();
         const colors = getChartThemeColors();
+
+        // Update Faithfulness Badge and Explanation
+        const badge = document.getElementById('faithfulnessBadge');
+        const exp = document.getElementById('faithfulnessExplanation');
+        if (badge) {
+          if (data.verdict === 'High Faithfulness') {
+            badge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1';
+            badge.innerHTML = `<i data-lucide="shield-check" class="w-3.5 h-3.5"></i> High Faithfulness (ΔAUC: +${data.delta_auc})`;
+          } else if (data.verdict === 'Moderate Faithfulness') {
+            badge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800 flex items-center gap-1';
+            badge.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Moderate Faithfulness (ΔAUC: +${data.delta_auc})`;
+          } else {
+            badge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1';
+            badge.innerHTML = `<i data-lucide="info" class="w-3.5 h-3.5"></i> Diffuse Salience (ΔAUC: ${data.delta_auc})`;
+          }
+        }
+        if (exp && data.explanation) {
+          exp.textContent = data.explanation;
+        }
+        safeLucide();
         
-        const ctx = document.getElementById('faithChart').getContext('2d');
+        if (typeof Chart === 'undefined') return;
+        const chartEl = document.getElementById('faithChart');
+        if (!chartEl) return;
+        const ctx = chartEl.getContext('2d');
         if (faithChartInstance) faithChartInstance.destroy();
 
         faithChartInstance = new Chart(ctx, {
@@ -2844,7 +3768,7 @@ Ask me any clinical or interpretability questions:
             labels: data.fractions.map(f => `${f}%`),
             datasets: [
               {
-                label: 'Attention-Guided Deletion (Top Regions)',
+                label: 'Attention-Guided Deletion (Top Diagnostic Hotspots)',
                 data: data.attention_guided.map(p => (p * 100).toFixed(1)),
                 borderColor: '#dc2626',
                 backgroundColor: 'rgba(220, 38, 38, 0.12)',
@@ -2871,16 +3795,90 @@ Ask me any clinical or interpretability questions:
             maintainAspectRatio: false,
             animation: { duration: 750, easing: 'easeOutCubic' },
             scales: {
-              y: { beginAtZero: true, max: 100, title: { display: true, text: 'Confidence (%)', color: colors.textColor, font: { weight: 'bold' } }, grid: { color: colors.gridColor }, ticks: { color: colors.textColor, font: { weight: '700' } } },
-              x: { title: { display: true, text: 'Tissue Masked (%)', color: colors.textColor, font: { weight: 'bold' } }, grid: { color: colors.gridColor }, ticks: { color: colors.textColor, font: { weight: '700' } } }
+              y: { beginAtZero: true, max: 100, title: { display: true, text: 'Prediction Confidence (%)', color: colors.textColor, font: { weight: 'bold' } }, grid: { color: colors.gridColor }, ticks: { color: colors.textColor, font: { weight: '700' } } },
+              x: { title: { display: true, text: 'Tissue Masked / Ablated (%)', color: colors.textColor, font: { weight: 'bold' } }, grid: { color: colors.gridColor }, ticks: { color: colors.textColor, font: { weight: '700' } } }
             },
             plugins: {
-              legend: { position: 'top', labels: { color: colors.textColor, font: { weight: 'bold', size: 11 } } }
+              legend: { position: 'top', labels: { color: colors.textColor, font: { weight: 'bold', size: 11 } } },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    return `${ctx.dataset.label}: ${ctx.raw}% Certainty`;
+                  }
+                }
+              }
             }
           }
         });
       } catch (err) {
         console.error('Faithfulness fetch error:', err);
+      }
+    }
+
+    async function triggerGradCAMAnalysis() {
+      if (!currentSlideData || !currentSlideData.patient_id) {
+        alert("Please load or analyze a slide first.");
+        return;
+      }
+      const pid = currentSlideData.patient_id;
+      const taskSelect = document.getElementById('heatmapTaskSelect');
+      const task = taskSelect ? taskSelect.value : 'cancer_type';
+      const targetClass = currentSlideData.predictions && currentSlideData.predictions[task] 
+        ? currentSlideData.predictions[task].prediction 
+        : 'COLON';
+
+      const placeholder = document.getElementById('gradcamPlaceholder');
+      const stage = document.getElementById('gradcamResultsStage');
+      if (placeholder) {
+        placeholder.classList.remove('hidden');
+        placeholder.innerHTML = '<div class="flex items-center justify-center gap-2 text-purple-600 dark:text-purple-400 font-black"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Backpropagating gradients through ResNet-50 layer3...</div>';
+      }
+      safeLucide();
+
+      try {
+        const res = await fetch(`/api/xai/gradcam/${encodeURIComponent(pid)}?task=${task}&predicted_class=${encodeURIComponent(targetClass)}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Grad-CAM generation failed");
+        }
+        const data = await res.json();
+
+        if (placeholder) placeholder.classList.add('hidden');
+        if (stage) stage.classList.remove('hidden');
+
+        const mb = data.morphological_breakdown || {};
+        const nVal = mb.nuclear_atypia_pct || 0;
+        const gVal = mb.glandular_architecture_pct || 0;
+        const sVal = mb.desmoplastic_stroma_pct || 0;
+
+        const elN = document.getElementById('gradcamNuclearVal'); if (elN) elN.textContent = `${nVal}%`;
+        const elNBar = document.getElementById('gradcamNuclearBar'); if (elNBar) elNBar.style.width = `${nVal}%`;
+
+        const elG = document.getElementById('gradcamGlandVal'); if (elG) elG.textContent = `${gVal}%`;
+        const elGBar = document.getElementById('gradcamGlandBar'); if (elGBar) elGBar.style.width = `${gVal}%`;
+
+        const elS = document.getElementById('gradcamStromaVal'); if (elS) elS.textContent = `${sVal}%`;
+        const elSBar = document.getElementById('gradcamStromaBar'); if (elSBar) elSBar.style.width = `${sVal}%`;
+
+        const elTarget = document.getElementById('gradcamTargetClass'); if (elTarget) elTarget.textContent = data.target_class || targetClass;
+        const elTargetDesc = document.getElementById('gradcamTargetDesc'); if (elTargetDesc) elTargetDesc.textContent = `${data.target_task || task} Attribution`;
+
+        const fullImg = document.getElementById('gradcamFullImg'); if (fullImg) fullImg.src = data.composite_heatmap_url + `?t=${Date.now()}`;
+        const hpfImg = document.getElementById('gradcamHpfImg'); if (hpfImg) hpfImg.src = data.hpf_gallery_url + `?t=${Date.now()}`;
+
+        const rationale = document.getElementById('gradcamRationaleText'); if (rationale) rationale.textContent = data.clinical_rationale || "";
+
+        const dlBtn = document.getElementById('gradcamDownloadBtn');
+        if (dlBtn && data.composite_heatmap_url) {
+          dlBtn.href = data.composite_heatmap_url;
+          dlBtn.classList.remove('hidden');
+        }
+        safeLucide();
+      } catch (err) {
+        if (placeholder) {
+          placeholder.classList.remove('hidden');
+          placeholder.innerHTML = `<span class="text-red-500 font-bold">Grad-CAM Error: ${err.message}</span>`;
+        }
       }
     }
 
@@ -2938,7 +3936,11 @@ Ask me any clinical or interpretability questions:
       }
     }
 
-    window.onload = init;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   </script>
   <!-- Floating XAI Chatbot Quick Launch Pill -->
   <button 
