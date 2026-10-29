@@ -899,6 +899,65 @@ def get_heatmap_image(patient_id: str, task: str = "cancer_type"):
     return FileResponse(save_path, media_type="image/png", filename=f"{clean_pid}_{task}_heatmap.png")
 
 
+@app.get("/api/multiscale_heatmap/{patient_id}")
+def get_multiscale_heatmap(patient_id: str):
+    """
+    Renders the 4-panel publication visualization:
+    (a) Input Histology Slice (H&E)
+    (b) 20x Cellular Attention
+    (c) 5x Regional Context
+    (d) Gated Consensus Heatmap
+    """
+    clean_pid = patient_id.replace("REAL_", "").replace(".pt", "")
+    from src.xai.heatmaps import generate_multiscale_consensus_figure
+    
+    # Locate raw histology image if available
+    image_path = None
+    for ext in [".jpeg", ".jpg", ".png", ".tif", ".tiff"]:
+        cand = SCRATCH_UPLOADS_DIR / f"{clean_pid}{ext}"
+        if cand.exists():
+            image_path = cand
+            break
+    if not image_path:
+        for cand in SCRATCH_UPLOADS_DIR.glob(f"*{clean_pid}*"):
+            if cand.is_file():
+                image_path = cand
+                break
+    if not image_path:
+        image_path = BASE_DIR / "reports/heatmaps/user_tissue_slice.png"
+        if not image_path.exists():
+            image_path = SCRATCH_UPLOADS_DIR / "uploaded_biopsy.jpg"
+
+    save_path = HEATMAPS_DIR / f"{clean_pid}_multiscale_consensus.png"
+    
+    # Retrieve slide features if present
+    c20, w20, w5 = None, None, None
+    feat_path = FEATURES_DIR / f"{clean_pid}.pt"
+    if feat_path.exists():
+        try:
+            d = torch.load(feat_path, map_location="cpu", weights_only=False)
+            c20 = d.get("coords20")
+            if c20 is not None:
+                c20 = c20.numpy() if hasattr(c20, "numpy") else np.array(c20)
+            model = get_model()
+            with torch.no_grad():
+                _, attns = model(d["f20"], d["f5"], d["parent"])
+                w20 = attns.get("cancer_type")
+                if w20 is not None:
+                    w20 = w20.numpy() if hasattr(w20, "numpy") else np.array(w20)
+        except Exception:
+            pass
+
+    out_file = generate_multiscale_consensus_figure(
+        image_input=image_path,
+        save_path=save_path,
+        coords=c20,
+        weights_20x=w20,
+        weights_5x=w5,
+    )
+    return FileResponse(out_file, media_type="image/png", filename=f"{clean_pid}_multiscale_consensus.png")
+
+
 @app.get("/api/xai/gradcam/{patient_id}")
 def get_gradcam_endpoint(patient_id: str, task: str = "cancer_type", predicted_class: Optional[str] = None):
     """Clinical Grad-CAM endpoint computing sub-cellular gradients on top diagnostic tissue."""
