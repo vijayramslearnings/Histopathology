@@ -22,9 +22,31 @@ Usage:
 
 import os
 import sys
-import argparse
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+import argparse
+
+# Safe stdout/stderr wrapper to prevent macOS Errno 5 (EIO) on detached tty / background execution
+class _SafeStream:
+    def __init__(self, target):
+        self.target = target
+    def write(self, s):
+        try:
+            return self.target.write(s)
+        except OSError:
+            pass
+    def flush(self):
+        try:
+            return self.target.flush()
+        except OSError:
+            pass
+    def __getattr__(self, name):
+        return getattr(self.target, name)
+
+if not isinstance(sys.stdout, _SafeStream):
+    sys.stdout = _SafeStream(sys.stdout)
+if not isinstance(sys.stderr, _SafeStream):
+    sys.stderr = _SafeStream(sys.stderr)
 
 import torch
 import torch.nn as nn
@@ -140,7 +162,8 @@ def tile_large_image(
     normalize_stain: bool = False,
 ) -> Tuple[List[Image.Image], np.ndarray]:
     """Tiles a histology image into multi-scale 256x256 patches with optional Macenko normalization."""
-    img = Image.open(image_path).convert("RGB")
+    with Image.open(image_path) as _raw_img:
+        img = _raw_img.convert("RGB")
     
     # Apply Macenko stain normalization to the full field if enabled
     if normalize_stain and MacenkoNormalizer is not None:
@@ -252,7 +275,8 @@ def process_external_data(
         normalizer = MacenkoNormalizer() if (normalize_stain and MacenkoNormalizer is not None) else None
         for idx, img_p in enumerate(image_files[:1200]):
             try:
-                im = Image.open(img_p).convert("RGB")
+                with Image.open(img_p) as _raw_im:
+                    im = _raw_im.convert("RGB")
                 if normalizer is not None:
                     im_arr = normalizer.fit_transform(np.array(im))
                     im = Image.fromarray(im_arr)

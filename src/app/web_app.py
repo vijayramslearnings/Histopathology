@@ -12,6 +12,28 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 
+# Safe stdout/stderr wrapper to prevent macOS Errno 5 (EIO) on detached tty / background execution
+class _SafeStream:
+    def __init__(self, target):
+        self.target = target
+    def write(self, s):
+        try:
+            return self.target.write(s)
+        except OSError:
+            pass
+    def flush(self):
+        try:
+            return self.target.flush()
+        except OSError:
+            pass
+    def __getattr__(self, name):
+        return getattr(self.target, name)
+
+if not isinstance(sys.stdout, _SafeStream):
+    sys.stdout = _SafeStream(sys.stdout)
+if not isinstance(sys.stderr, _SafeStream):
+    sys.stderr = _SafeStream(sys.stderr)
+
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -713,24 +735,25 @@ async def upload_slide(
 ):
     try:
         content = await file.read()
-        filename_lower = file.filename.lower()
+        safe_filename = Path(file.filename).name
+        filename_lower = safe_filename.lower()
         prior_clean = organ_prior.strip().upper() if organ_prior and organ_prior.strip().upper() != "AUTO" else None
         if not prior_clean:
             from src.preprocess.process_external import detect_organ_from_filename
-            prior_clean = detect_organ_from_filename(file.filename)
+            prior_clean = detect_organ_from_filename(safe_filename)
         
         # Direct histology image upload (.png, .jpg, .jpeg, .tif, .tiff)
         if any(filename_lower.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".tif", ".tiff"]):
             scratch_dir = BASE_DIR / "data/scratch_uploads"
             scratch_dir.mkdir(parents=True, exist_ok=True)
-            temp_img_path = scratch_dir / file.filename
+            temp_img_path = scratch_dir / safe_filename
             with open(temp_img_path, "wb") as f:
                 f.write(content)
             
-            clean_pid = Path(file.filename).stem
+            clean_pid = Path(safe_filename).stem
             # Always enforce Macenko stain normalization for raw external image uploads
             # to neutralize camera sensor, lighting, and non-standard lab staining shifts
-            do_norm = True
+            do_norm = bool(normalize_stain) if normalize_stain is not None else True
             pt_path = process_external_data(
                 image_path=str(temp_img_path),
                 patient_id=clean_pid,
@@ -743,7 +766,7 @@ async def upload_slide(
             if prior_clean:
                 data["organ_prior"] = prior_clean
             res = run_inference_on_data(data, pid=clean_pid, organ_prior=prior_clean)
-            res["image_url"] = f"/scratch_uploads/{file.filename}"
+            res["image_url"] = f"/scratch_uploads/{safe_filename}"
             res["report"] = generate_synoptic_report(clean_pid, res)
             return res
 
@@ -752,11 +775,13 @@ async def upload_slide(
         data = torch.load(buffer, map_location="cpu", weights_only=False)
         if prior_clean:
             data["organ_prior"] = prior_clean
-        pid = data.get("patient_id", file.filename.replace(".pt", ""))
+        pid = data.get("patient_id", Path(safe_filename).stem)
         res = run_inference_on_data(data, pid=pid)
         res["report"] = generate_synoptic_report(pid, res)
         return res
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Error processing uploaded file: {str(e)}")
 
 

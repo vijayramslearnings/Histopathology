@@ -15,6 +15,28 @@ import webbrowser
 from pathlib import Path
 
 # Add project root to sys.path
+# Safe stdout/stderr wrapper to prevent macOS Errno 5 (EIO) on detached tty / background execution
+class _SafeStream:
+    def __init__(self, target):
+        self.target = target
+    def write(self, s):
+        try:
+            return self.target.write(s)
+        except OSError:
+            pass
+    def flush(self):
+        try:
+            return self.target.flush()
+        except OSError:
+            pass
+    def __getattr__(self, name):
+        return getattr(self.target, name)
+
+if not isinstance(sys.stdout, _SafeStream):
+    sys.stdout = _SafeStream(sys.stdout)
+if not isinstance(sys.stderr, _SafeStream):
+    sys.stderr = _SafeStream(sys.stderr)
+
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
