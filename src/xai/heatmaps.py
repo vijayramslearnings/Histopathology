@@ -357,12 +357,11 @@ def generate_multiscale_consensus_figure(
     if density_gated.max() > 0:
         density_gated = density_gated / density_gated.max()
 
-    # Clinical colormap overlay function
+    # Clinical colormap overlay function matching exact Grad-CAM overlay standard
     cmap = matplotlib.colormaps.get(cmap_name, matplotlib.colormaps["jet"])
     def apply_overlay(base_rgb, salience_field):
         colored = cmap(salience_field)[:, :, :3]
-        dimmed_base = base_rgb * 0.88
-        overlay = (1.0 - alpha) * dimmed_base + alpha * colored
+        overlay = (1.0 - alpha) * base_rgb + alpha * colored
         return np.clip(overlay, 0.0, 1.0)
 
     overlay_20x = apply_overlay(img_arr, density_20x)
