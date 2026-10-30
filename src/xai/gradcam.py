@@ -321,12 +321,25 @@ class ClinicalHistologyGradCAM:
             f"and cribriform distortion. Desmoplastic stromal invasion accounts for {mean_stroma:.1f}% of activation, confirming true malignant tissue architecture."
         )
 
+        # Generate the 4-panel publication-ready multi-scale consensus figure:
+        # (a) Input Histology Slice (H&E), (b) 20x Cellular Attention, (c) 5x Regional Context, (d) Gated Consensus Heatmap
+        from src.xai.heatmaps import generate_multiscale_consensus_figure
+        consensus_save_path = HEATMAPS_DIR / f"{image_path.stem}_multiscale_consensus.png"
+        generate_multiscale_consensus_figure(
+            image_input=image_path,
+            save_path=consensus_save_path,
+            caption="Grad-CAM: H&E, 20x, 5x and gated consensus attention",
+            cmap_name="jet",
+            alpha=0.58,
+        )
+
         return {
             "specimen": image_path.name,
             "target_task": task,
             "target_class": predicted_class,
             "composite_heatmap_url": f"/reports/heatmaps/{save_path.name}",
             "hpf_gallery_url": f"/reports/heatmaps/{hpf_save_path.name}",
+            "multiscale_consensus_url": f"/reports/heatmaps/{consensus_save_path.name}",
             "morphological_breakdown": {
                 "nuclear_atypia_pct": round(mean_nuclear, 1),
                 "glandular_architecture_pct": round(mean_lumen, 1),
