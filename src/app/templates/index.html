@@ -989,6 +989,7 @@
 
                 <!-- Palette Selector -->
                 <select id="heatmapPaletteSelect" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold px-2 py-1 text-slate-950 dark:text-slate-100 outline-none cursor-pointer" onchange="renderHeatmap()">
+                  <option value="jet" selected>Jet Academic (Blue-Cyan-Yellow-Red)</option>
                   <option value="turbo">Clinical Turbo (Rainbow Saliency)</option>
                   <option value="thermal">Thermal FLIR (Blue-Amber-Red)</option>
                   <option value="inferno">Inferno (Deep Purple-Gold)</option>
@@ -2969,7 +2970,20 @@ Ask me any clinical or interpretability questions:
     function getHeatmapColor(w, palette) {
       w = Math.max(0, Math.min(1, w));
       let r, g, b;
-      if (palette === 'turbo') {
+      if (palette === 'jet') {
+        // Standard MATLAB / Academic Jet Colormap (Deep Blue -> Cyan -> Yellow -> Deep Red)
+        if (w < 0.125) {
+          r = 0; g = 0; b = Math.floor(128 + w * 1024);
+        } else if (w < 0.375) {
+          r = 0; g = Math.floor((w - 0.125) * 1024); b = 255;
+        } else if (w < 0.625) {
+          r = Math.floor((w - 0.375) * 1024); g = 255; b = Math.floor(255 - (w - 0.375) * 1024);
+        } else if (w < 0.875) {
+          r = 255; g = Math.floor(255 - (w - 0.625) * 1024); b = 0;
+        } else {
+          r = Math.floor(255 - (w - 0.875) * 512); g = 0; b = 0;
+        }
+      } else if (palette === 'turbo') {
         // High-precision polynomial approximation of Google Turbo Colormap
         r = 34.61 + w * (1172.0 + w * (-10793.56 + w * (33300.12 + w * (-38394.49 + w * 14825.25))));
         g = 23.31 + w * (557.33 + w * (1225.33 + w * (-3574.96 + w * (1073.77 + w * 707.56))));
@@ -3050,7 +3064,8 @@ Ask me any clinical or interpretability questions:
       // Update colorbar gradient styling
       const legend = document.getElementById('heatmapLegendBar');
       if (legend) {
-        if (palette === 'turbo') legend.style.background = 'linear-gradient(to right, #30123b, #1ae4b6, #a4fc3c, #febc2b, #e43516, #7a0403)';
+        if (palette === 'jet') legend.style.background = 'linear-gradient(to right, #000080, #00ffff, #ffff00, #ff0000, #800000)';
+        else if (palette === 'turbo') legend.style.background = 'linear-gradient(to right, #30123b, #1ae4b6, #a4fc3c, #febc2b, #e43516, #7a0403)';
         else if (palette === 'viridis') legend.style.background = 'linear-gradient(to right, #440154, #21908d, #fde725)';
         else if (palette === 'inferno') legend.style.background = 'linear-gradient(to right, #000004, #721f81, #f1605d, #fcfdbf)';
         else if (palette === 'he') legend.style.background = 'linear-gradient(to right, #f472b6, #a855f7, #581c87)';
@@ -3204,9 +3219,9 @@ Ask me any clinical or interpretability questions:
         const gridW = 120, gridH = 76;
         const grid = new Float32Array(gridW * gridH);
         const normGrid = new Float32Array(gridW * gridH);
-        const sigma = 3.4;
+        const sigma = 6.2;
         const twoSigmaSq = 2 * sigma * sigma;
-        const R = 11;
+        const R = 18;
 
         pts.forEach(p => {
           if (p.w < currentFilterThreshold) return;
@@ -3362,30 +3377,24 @@ Ask me any clinical or interpretability questions:
           ctx.restore();
         }
 
-        // Draw Hotspot marker on peak malignancy focus
-        const sortedPts = [...pts].sort((a, b) => b.w - a.w);
-        ctx.save();
-        sortedPts.slice(0, 3).forEach((p, idx) => {
-          if (p.w < 0.60) return;
-          const cx = p._cx;
-          const cy = p._cy;
-          ctx.beginPath();
-          ctx.arc(cx, cy, 6 - idx, 0, 2 * Math.PI);
-          ctx.fillStyle = idx === 0 ? '#ef4444' : '#f59e0b';
-          ctx.fill();
-          ctx.lineWidth = 1.5;
-          ctx.strokeStyle = '#ffffff';
-          ctx.stroke();
-
-          if (idx === 0) {
-            ctx.font = 'bold 9px monospace';
-            ctx.fillStyle = '#ffffff';
-            ctx.shadowColor = '#000000';
-            ctx.shadowBlur = 4;
-            ctx.fillText(`Peak Focus: ${p.w.toFixed(2)}`, cx + 8, cy - 8);
-          }
-        });
-        ctx.restore();
+        // Subtle peak hotspot marker (only if not in smooth continuous mode)
+        if (mode === 'contours') {
+          const sortedPts = [...pts].sort((a, b) => b.w - a.w);
+          ctx.save();
+          sortedPts.slice(0, 2).forEach((p, idx) => {
+            if (p.w < 0.70) return;
+            const cx = p._cx;
+            const cy = p._cy;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+          });
+          ctx.restore();
+        }
 
       } else if (mode === 'tiles') {
         ctx.save();
